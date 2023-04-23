@@ -4,7 +4,7 @@ set -euo pipefail
 ###
 ## GLOBAL VARIABLES
 ###
-GITHUB_TOKEN=${GITHUB_TOKEN:-'<personal access token'} 
+GITHUB_TOKEN=${GITHUB_TOKEN:-'<personal access token>'} 
 ORG=${ORG:-'your organization'}
 API_URL_PREFIX=${API_URL_PREFIX:-'https://api.github.com'}
 
