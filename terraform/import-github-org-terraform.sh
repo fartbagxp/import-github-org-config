@@ -1,11 +1,21 @@
-#!/usr/bin/env /bin/bash
+#!/usr/bin/env bash
 set -euo pipefail
 
 ###
 ## GLOBAL VARIABLES
 ###
-GITHUB_TOKEN=${GITHUB_TOKEN:-'<personal access token>'} 
-ORG=${ORG:-'your organization'}
+if [ -z "$GITHUB_TOKEN" ]; then
+  echo "Error: GITHUB_TOKEN environment variable is not set."
+  exit 1
+fi
+
+if [ -z "$GITHUB_OWNER" ]; then
+  echo "Error: GITHUB_OWNER environment variable is not set."
+  exit 1
+fi
+
+GITHUB_TOKEN="${GITHUB_TOKEN}"
+ORG="${GITHUB_OWNER}"
 API_URL_PREFIX=${API_URL_PREFIX:-'https://api.github.com'}
 
 ###
@@ -16,8 +26,8 @@ API_URL_PREFIX=${API_URL_PREFIX:-'https://api.github.com'}
   # You can only list 100 items per page, so you can only clone 100 at a time.
   # This function uses the API to calculate how many pages of public repos you have.
 get_public_pagination () {
-    public_pages=$(curl -I -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/repos?type=public&per_page=100" | grep -Eo '&page=\d+' | grep -Eo '[0-9]+' | tail -1;)
-    echo "${public_pages:-1}"
+  public_pages=$(curl -I -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/repos?type=public&per_page=100" | grep -Eo '&page=\d+' | grep -Eo '[0-9]+' | tail -1;)
+  echo "${public_pages:-1}"
 }
   # This function uses the output from above and creates an array counting from 1->$ 
 limit_public_pagination () {
@@ -79,8 +89,8 @@ EOF
 
 # Private Repos
 get_private_pagination () {
-    priv_pages=$(curl -I -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/repos?type=private&per_page=100" | grep -Eo '&page=\d+' | grep -Eo '[0-9]+' | tail -1;)
-    echo "${priv_pages:-1}"
+  priv_pages=$(curl -I -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/repos?type=private&per_page=100" | grep -Eo '&page=\d+' | grep -Eo '[0-9]+' | tail -1;)
+  echo "${priv_pages:-1}"
 }
 
 limit_private_pagination () {
