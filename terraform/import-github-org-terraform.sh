@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+start="$(date +%s)"
+
 ###
 ## GLOBAL VARIABLES
 ###
@@ -178,7 +180,7 @@ import_teams () {
     TEAM_PARENT_ID=$(echo "$TEAM_PAYLOAD" | jq -r .parent.id)
   
     if [[ "${TEAM_PRIVACY}" == "closed" ]]; then
-      cat >> "github-teams-${TEAM_NAME_NO_SPACE}.tf" << EOF
+      cat >> "github-teams.tf" << EOF
 resource "github_team" "${TEAM_NAME_NO_SPACE}" {
   name           = "${TEAM_NAME}"
   description    = "${TEAM_DESCRIPTION}"
@@ -187,7 +189,7 @@ resource "github_team" "${TEAM_NAME_NO_SPACE}" {
 }
 EOF
     elif [[ "${TEAM_PRIVACY}" == "secret" ]]; then
-      cat >> "github-teams-${TEAM_NAME_NO_SPACE}.tf" << EOF
+      cat >> "github-teams.tf" << EOF
 resource "github_team" "${TEAM_NAME_NO_SPACE}" {
   name        = "${TEAM_NAME}"
   description = "${TEAM_DESCRIPTION}"
@@ -211,7 +213,7 @@ import_team_memberships () {
       TEAM_ROLE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.hellcat-preview+json" "${API_URL_PREFIX}/teams/${i}/memberships/${j}?access_token=${GITHUB_TOKEN}&per_page=100" | jq -r .role)
 
       if [[ "${TEAM_ROLE}" == "maintainer" ]]; then
-        cat >> "github-team-memberships-${TEAM_NAME}.tf" << EOF
+        cat >> "github-team-memberships.tf" << EOF
 resource "github_team_membership" "${TEAM_NAME}-${j}" {
   username    = "${j}"
   team_id     = "\${github_team.${TEAM_NAME}.id}"
@@ -219,7 +221,7 @@ resource "github_team_membership" "${TEAM_NAME}-${j}" {
 }
 EOF
       elif [[ "${TEAM_ROLE}" == "member" ]]; then
-        cat >> "github-team-memberships-${TEAM_NAME}.tf" << EOF
+        cat >> "github-team-memberships.tf" << EOF
 resource "github_team_membership" "${TEAM_NAME}-${j}" {
   username    = "${j}"
   team_id     = "\${github_team.${TEAM_NAME}.id}"
@@ -260,7 +262,7 @@ get_team_repos () {
     PULL_PERMS=$(echo "$PERMS_PAYLOAD" | jq -r .permissions.pull )
   
     if [[ "${ADMIN_PERMS}" == "true" ]]; then
-      cat >> "github-teams-${TEAM_NAME}.tf" << EOF
+      cat >> "github-teams.tf" << EOF
 resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
   team_id    = "${TEAM_ID}"
   repository = "${i}"
@@ -268,7 +270,7 @@ resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
 }
 EOF
     elif [[ "${PUSH_PERMS}" == "true" ]]; then
-      cat >> "github-teams-${TEAM_NAME}.tf" << EOF
+      cat >> "github-teams.tf" << EOF
 resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
   team_id    = "${TEAM_ID}"
   repository = "${i}"
@@ -276,7 +278,7 @@ resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
 }
 EOF
     elif [[ "${PULL_PERMS}" == "true" ]]; then
-      cat >> "github-teams-${TEAM_NAME}.tf" << EOF
+      cat >> "github-teams.tf" << EOF
 resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
   team_id    = "${TEAM_ID}"
   repository = "${i}"
@@ -307,3 +309,8 @@ import_team_repos
 
 terraform fmt
 terraform validate
+
+end="$(date +%s)"
+elapsed="$((end - start))"
+
+echo "Elapsed time: $elapsed seconds."
