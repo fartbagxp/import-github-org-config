@@ -289,3 +289,4 @@ backend/*
 
 *.tf
 !main.tf
+.env.sh

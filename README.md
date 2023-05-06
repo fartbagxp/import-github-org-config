@@ -21,34 +21,15 @@ The instructions and some of the setup are copied and adopted from [an updated g
 ### Running
 
 1. `git clone git@github.com:fartbagxp/import-github-org-config.git`
-2. setup a **main.tf** with the personal access token (PAT) token.
-
-The main.tf should look something like this.
-If setting your environment variable, set GITHUB_TOKEN to the github account's Personal Access Token.
-
-```hcl
-provider "github" {
-  token        = var.token # or GITHUB_TOKEN (in environment variable)
-  owner        = "my_org"
-  # optional, if using GitHub Enterprise
-  base_url     =  "https://github.mycompany.com/api/v3/"
-}
-```
-
+2. Copy .sample.env.sh into .env.sh and fill in the GITHUB_TOKEN and GITHUB_OWNER environment variables. The GITHUB_TOKEN may be set to your github account's Personal Access Token, with read-only access to the repositories.
 3. run `terraform init` to initialize Terraform and modules needed.
-4. configure the **import-github-org-terraform.sh** script at the top of the scripts to modify the global variables.
-
-- `GITHUB_TOKEN=...`
-- `ORG=...`
-- If using Github.com, API_URL_PREFIX should be https://api.github.com. Otherwise, if hosting Github enterprise modify API_URL_PREFIX to use https://github.mycompany.com/api/v3/.
-
-5. Run the script.
+4. Run the script.
 
 ```bash
-GITHUB_TOKEN=ghp_ABCDEFG ORG=my_org import-github-org-terraform.sh
+bash import-github-org-terraform.sh
 ```
 
-6. Run `terraform plan` to ensure that everything was imported and that no changes are required.
+5. Run `terraform plan` to ensure that everything was imported and that no changes are required.
 
 ### Limitations
 
