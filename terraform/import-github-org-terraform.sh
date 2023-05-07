@@ -3,6 +3,37 @@ set -euo pipefail
 
 start="$(date +%s)"
 
+#################################################################
+## This script imports Github configuration as terraform code 
+## to store as tfstate.
+## 
+## Before using, set environment variables $GITHUB_TOKEN and 
+## $GITHUB_OWNER.
+## 
+## GITHUB_TOKEN is a token with read access to users, memberships,
+## teams, of a Github organization.
+## Github_Owner is the Github organization name.
+##
+## Usage:
+## > bash import-github-org-terraform.sh 
+#################################################################
+
+### Check for tool installation
+if ! command -v curl >/dev/null 2>&1; then
+  echo "curl is not installed. Please install curl and try again."
+  exit 1
+fi
+
+if ! command -v jq >/dev/null 2>&1; then
+  echo "jq is not installed. Please install jq and try again."
+  exit 1
+fi
+
+if ! command -v terraform >/dev/null 2>&1; then
+  echo "terraform is not installed. Please install terraform and try again."
+  exit 1
+fi
+
 ###
 ## GLOBAL VARIABLES
 ###
@@ -16,7 +47,6 @@ if [ -z "$GITHUB_OWNER" ]; then
   exit 1
 fi
 
-GITHUB_TOKEN="${GITHUB_TOKEN}"
 ORG="${GITHUB_OWNER}"
 API_URL_PREFIX=${API_URL_PREFIX:-'https://api.github.com'}
 
@@ -62,7 +92,7 @@ import_public_repos () {
       # Terraform doesn't like '.' in resource names, so if one exists then replace it with a dash
       TERRAFORM_PUBLIC_REPO_NAME=$(echo "${i}" | tr  "."  "-")
 
-      cat >> github-public-repos.tf << EOF
+      cat >> "github-public-repos.tf" << EOF
 resource "github_repository" "${TERRAFORM_PUBLIC_REPO_NAME}" {
   name               = "${i}"
   topics             = ${PUBLIC_REPO_TOPICS}
@@ -124,7 +154,7 @@ import_private_repos () {
       # Terraform doesn't like '.' in resource names, so if one exists then replace it with a dash
       TERRAFORM_PRIVATE_REPO_NAME=$(echo "${i}" | tr  "."  "-")
 
-      cat >> github-private-repos.tf << EOF
+      cat >> "github-private-repos.tf" << EOF
 resource "github_repository" "${TERRAFORM_PRIVATE_REPO_NAME}" {
   name               = "${i}"
   private            = true
@@ -157,7 +187,7 @@ import_users () {
     MEMBERSHIP_ROLE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/memberships/${i}" | jq -r .role)
     USERNAME_PARSE=$(echo "$i" | tr "-" "_" | tr '[:upper:]' '[:lower:]')
   
-  cat >> github-users.tf << EOF
+  cat >> "github-users.tf" << EOF
 resource "github_membership" "${USERNAME_PARSE}" {
   username        = "${i}"
   role            = "${MEMBERSHIP_ROLE}"
@@ -235,8 +265,8 @@ EOF
 }
 
 get_team_pagination () {
-    team_pages=$(curl -I -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/repos?per_page=100" | grep -Eo '&page=\d+' | grep -Eo '[0-9]+' | tail -1;)
-    echo "${team_pages:-1}"
+  team_pages=$(curl -I -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/repos?per_page=100" | grep -Eo '&page=\d+' | grep -Eo '[0-9]+' | tail -1;)
+  echo "${team_pages:-1}"
 }
   # This function uses the out from above and creates an array counting from 1->$ 
 limit_team_pagination () {
@@ -244,13 +274,12 @@ limit_team_pagination () {
 }
 
 get_team_ids () {
-  echo   curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/teams?per_page=100" -H "Accept: application/vnd.github.hellcat-preview+json" | jq -r 'sort_by(.name) | .[] | .id'
+  echo curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/teams?per_page=100" -H "Accept: application/vnd.github.hellcat-preview+json" | jq -r 'sort_by(.name) | .[] | .id'
   curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/teams?per_page=100" -H "Accept: application/vnd.github.hellcat-preview+json" | jq -r 'sort_by(.name) | .[] | .id'
 }
 
 get_team_repos () {
   for PAGE in $(limit_team_pagination); do
-
     for i in $(curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/teams/${TEAM_ID}/repos?page=${PAGE}&per_page=100" | jq -r 'sort_by(.name) | .[] | .name'); do
     
     TERRAFORM_TEAM_REPO_NAME=$(echo "${i}" | tr  "."  "-")
@@ -300,6 +329,19 @@ done
 ###
 ## DO IT YO
 ###
+
+## create the folder structure to structure the code better.
+mkdir -p "$GITHUB_OWNER"
+if [ ! -d "$GITHUB_OWNER" ]; then
+  echo "Error: $GITHUB_OWNER does not exist."
+  exit 1
+fi
+
+cp main.tf "$GITHUB_OWNER/"
+ORIG_DIR=$(pwd)
+cd "$GITHUB_OWNER/" || { echo "Error: failed to navigate to $GITHUB_OWNER directory."; exit 1; }
+terraform init
+
 import_public_repos
 import_private_repos
 import_users
@@ -309,6 +351,8 @@ import_team_repos
 
 terraform fmt
 terraform validate
+
+cd "$ORIG_DIR" || { echo "Error: failed to navigate to $ORIG_DIR directory."; exit 1; }
 
 end="$(date +%s)"
 elapsed="$((end - start))"

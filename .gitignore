@@ -288,5 +288,6 @@ backend/*
 .terraform.lock.hcl
 
 *.tf
-!main.tf
+!terraform/main.tf
+!terraform/*.sh
 .env.sh
