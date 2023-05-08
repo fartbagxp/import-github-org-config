@@ -54,6 +54,72 @@ API_URL_PREFIX=${API_URL_PREFIX:-'https://api.github.com'}
 ## FUNCTIONS
 ###
 
+# Organization
+import_organization () {
+  organization=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}";)
+  ORG_ID=$(echo "$organization" | jq -r '.id')
+  ORG_BILLING_EMAIL=$(echo "$organization" | jq -r '.billing_email')
+  ORG_COMPANY=$(echo "$organization" | jq -r '.company')
+  ORG_BLOG=$(echo "$organization" | jq -r '.blog')
+  ORG_EMAIL=$(echo "$organization" | jq -r '.email')
+  ORG_TWITTER_USERNAME=$(echo "$organization" | jq -r '.twitter_username')
+  ORG_LOCATION=$(echo "$organization" | jq -r '.location')
+  ORG_NAME=$(echo "$organization" | jq -r '.name')
+  ORG_DESCRIPTION=$(echo "$organization" | jq -r '.description')
+  ORG_HAS_ORGANIZATION_PROJECT=$(echo "$organization" | jq -r '.has_organization_projects')
+  ORG_HAS_REPOSITORY_PROJECT=$(echo "$organization" | jq -r '.has_repository_projects')
+  ORG_DEFAULT_REPOSITORY_PERMISSION=$(echo "$organization" | jq -r '.default_repository_permission')
+  ORG_MEMBERS_CAN_CREATE_REPOSITORY=$(echo "$organization" | jq -r '.members_can_create_repositories')
+  ORG_MEMBERS_CAN_CREATE_PUBLIC_REPOSITORY=$(echo "$organization" | jq -r '.members_can_create_public_repositories')
+  ORG_MEMBERS_CAN_CREATE_PRIVATE_REPOSITORY=$(echo "$organization" | jq -r '.members_can_create_private_repositories')
+  ORG_MEMBERS_CAN_CREATE_INTERNAL_REPOSITORY=$(echo "$organization" | jq -r '.members_can_create_internal_repositories')
+  ORG_MEMBERS_CAN_CREATE_PAGES=$(echo "$organization" | jq -r '.members_can_create_pages')
+  ORG_MEMBERS_CAN_CREATE_PUBLIC_PAGES=$(echo "$organization" | jq -r '.members_can_create_public_pages')
+  ORG_MEMBERS_CAN_CREATE_PRIVATE_PAGES=$(echo "$organization" | jq -r '.members_can_create_private_pages')
+  ORG_MEMBERS_CAN_CREATE_FORK_PRIVATE_REPOSITORY=$(echo "$organization" | jq -r '.members_can_fork_private_repositories')
+  ORG_WEB_COMMIT_SIGNOFF_REQUIRED=$(echo "$organization" | jq -r '.web_commit_signoff_required')
+  ORG_ADVANCED_SECURITY_ENABLED_FOR_NEW_REPOSITORY=$(echo "$organization" | jq -r '.advanced_security_enabled_for_new_repositories')
+  ORG_DEPENDABOT_ALERT_ENABLED_FOR_NEW_REPOSITORY=$(echo "$organization" | jq -r '.dependabot_alerts_enabled_for_new_repositories')
+  ORG_DEPENDABOT_SECURITY_UPDATES_ENABLED_FOR_NEW_REPOSITORY=$(echo "$organization" | jq -r '.dependabot_security_updates_enabled_for_new_repositories')
+  ORG_DEPENDENCY_GRAPH_ENABLED_FOR_NEW_REPOSITORY=$(echo "$organization" | jq -r '.dependency_graph_enabled_for_new_repositories')
+  ORG_SECRET_SCANNING_ENABLED_FOR_NEW_REPOSITORY=$(echo "$organization" | jq -r '.secret_scanning_enabled_for_new_repositories')
+  ORG_SECRET_SCANNING_PUSH_PROTECTION_ENABLED_FOR_NEW_REPOSITORY=$(echo "$organization" | jq -r '.secret_scanning_push_protection_enabled_for_new_repositories')
+
+      cat >> "github-organization.tf" << EOF
+resource "github_organization_settings" "$ORG" {
+  billing_email = "$ORG_BILLING_EMAIL"
+  company = "$ORG_COMPANY"
+  blog = "$ORG_BLOG"
+  email = "$ORG_EMAIL"
+  twitter_username = "$ORG_TWITTER_USERNAME"
+  location = "$ORG_LOCATION"
+  name = "$ORG_NAME"
+  description = "$ORG_DESCRIPTION"
+  has_organization_projects = "$ORG_HAS_ORGANIZATION_PROJECT"
+  has_repository_projects = "$ORG_HAS_REPOSITORY_PROJECT"
+  default_repository_permission = "$ORG_DEFAULT_REPOSITORY_PERMISSION"
+  members_can_create_repositories = "$ORG_MEMBERS_CAN_CREATE_REPOSITORY"
+  members_can_create_public_repositories = "$ORG_MEMBERS_CAN_CREATE_PUBLIC_REPOSITORY"
+  members_can_create_private_repositories = "$ORG_MEMBERS_CAN_CREATE_PRIVATE_REPOSITORY"
+  members_can_create_internal_repositories = "$ORG_MEMBERS_CAN_CREATE_INTERNAL_REPOSITORY"
+  members_can_create_pages = "$ORG_MEMBERS_CAN_CREATE_PAGES"
+  members_can_create_public_pages = "$ORG_MEMBERS_CAN_CREATE_PUBLIC_PAGES"
+  members_can_create_private_pages = "$ORG_MEMBERS_CAN_CREATE_PRIVATE_PAGES"
+  members_can_fork_private_repositories = "$ORG_MEMBERS_CAN_CREATE_FORK_PRIVATE_REPOSITORY"
+  web_commit_signoff_required = "$ORG_WEB_COMMIT_SIGNOFF_REQUIRED"
+  advanced_security_enabled_for_new_repositories = "$ORG_ADVANCED_SECURITY_ENABLED_FOR_NEW_REPOSITORY"
+  dependabot_alerts_enabled_for_new_repositories=  "$ORG_DEPENDABOT_ALERT_ENABLED_FOR_NEW_REPOSITORY"
+  dependabot_security_updates_enabled_for_new_repositories = "$ORG_DEPENDABOT_SECURITY_UPDATES_ENABLED_FOR_NEW_REPOSITORY"
+  dependency_graph_enabled_for_new_repositories = "$ORG_DEPENDENCY_GRAPH_ENABLED_FOR_NEW_REPOSITORY"
+  secret_scanning_enabled_for_new_repositories = "$ORG_SECRET_SCANNING_ENABLED_FOR_NEW_REPOSITORY"
+  secret_scanning_push_protection_enabled_for_new_repositories = "$ORG_SECRET_SCANNING_PUSH_PROTECTION_ENABLED_FOR_NEW_REPOSITORY"
+}
+
+EOF
+
+  terraform import "github_organization_settings.${ORG}" "${ORG_ID}"
+}
+
 # Public Repos
   # You can only list 100 items per page, so you can only clone 100 at a time.
   # This function uses the API to calculate how many pages of public repos you have.
@@ -61,6 +127,7 @@ get_public_pagination () {
   public_pages=$(curl -I -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/repos?type=public&per_page=100" | grep -Eo '&page=\d+' | grep -Eo '[0-9]+' | tail -1;)
   echo "${public_pages:-1}"
 }
+
   # This function uses the output from above and creates an array counting from 1->$ 
 limit_public_pagination () {
   seq "$(get_public_pagination)"
@@ -342,6 +409,7 @@ ORIG_DIR=$(pwd)
 cd "$GITHUB_OWNER/" || { echo "Error: failed to navigate to $GITHUB_OWNER directory."; exit 1; }
 terraform init
 
+import_organization
 import_public_repos
 import_private_repos
 import_users
