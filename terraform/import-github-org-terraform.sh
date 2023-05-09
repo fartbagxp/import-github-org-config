@@ -165,6 +165,11 @@ import_public_repos () {
         TERRAFORM_PUBLIC_REPO_NAME="_$TERRAFORM_PUBLIC_REPO_NAME"
       fi
 
+      # Terraform also doesn't like resource name starting with -, so remove that.
+      if [[ $TERRAFORM_PUBLIC_REPO_NAME == -* ]]; then
+        TERRAFORM_PUBLIC_REPO_NAME="${TERRAFORM_PUBLIC_REPO_NAME#-}"
+      fi
+
       cat >> "github-public-repos.tf" << EOF
 resource "github_repository" "${TERRAFORM_PUBLIC_REPO_NAME}" {
   name               = "${i}"
@@ -226,6 +231,11 @@ import_private_repos () {
      
       # Terraform doesn't like '.' in resource names, so if one exists then replace it with a dash
       TERRAFORM_PRIVATE_REPO_NAME=$(echo "${i}" | tr  "."  "-")
+
+      # Terraform also doesn't like resource name starting with -, so remove that.
+      if [[ $TERRAFORM_PRIVATE_REPO_NAME == -* ]]; then
+        TERRAFORM_PRIVATE_REPO_NAME="${TERRAFORM_PRIVATE_REPO_NAME#-}"
+      fi
 
       ## Terraform import cannot handle a name starting with a number, add _ if 
       ## the repo name starts with a number.
