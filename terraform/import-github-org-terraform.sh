@@ -236,7 +236,7 @@ import_private_repos () {
       cat >> "github-private-repos.tf" << EOF
 resource "github_repository" "${TERRAFORM_PRIVATE_REPO_NAME}" {
   name               = "${i}"
-  private            = true
+  visibility         = "private"
   description        = "${PRIVATE_REPO_DESCRIPTION}"
   has_wiki           = ${PRIVATE_REPO_WIKI}
   has_projects       = ${PRIVATE_REPO_PROJECTS}
