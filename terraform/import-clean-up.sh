@@ -34,6 +34,7 @@ echo "Cleaning up import folder structure in $ORG."
 ## Be very selective on what we delete, rm -rf is a footgun.
 rm -rvf "$ORG/github-organization.tf"
 rm -rvf "$ORG/github-public-repos.tf"
+rm -rvf "$ORG/github-private-repos.tf"
 rm -rvf "$ORG/github-team-memberships.tf"
 rm -rvf "$ORG/github-teams.tf"
 rm -rvf "$ORG/github-users.tf"

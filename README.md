@@ -35,3 +35,4 @@ bash import-github-org-terraform.sh
 
 - Currently finding all users don't have pagnation support, so I forced to the first 1000 users.
 - Github Apps have [limited support in Terraform provider due to API not supporting it](https://github.com/integrations/terraform-provider-github/issues/509).
+- Team Repository [conflicts with Team Collaborators](https://registry.terraform.io/providers/integrations/github/latest/docs/resources/team_repository). Should update to Team Repository.

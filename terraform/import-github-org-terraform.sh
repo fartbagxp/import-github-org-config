@@ -159,6 +159,12 @@ import_public_repos () {
       # Terraform doesn't like '.' in resource names, so if one exists then replace it with a dash
       TERRAFORM_PUBLIC_REPO_NAME=$(echo "${i}" | tr  "."  "-")
 
+      ## Terraform import cannot handle a name starting with a number, add _ if 
+      ## the repo name starts with a number.
+      if [[ $TERRAFORM_PUBLIC_REPO_NAME =~ ^[0-9] ]]; then
+        TERRAFORM_PUBLIC_REPO_NAME="_$TERRAFORM_PUBLIC_REPO_NAME"
+      fi
+
       cat >> "github-public-repos.tf" << EOF
 resource "github_repository" "${TERRAFORM_PUBLIC_REPO_NAME}" {
   name               = "${i}"
@@ -220,6 +226,12 @@ import_private_repos () {
      
       # Terraform doesn't like '.' in resource names, so if one exists then replace it with a dash
       TERRAFORM_PRIVATE_REPO_NAME=$(echo "${i}" | tr  "."  "-")
+
+      ## Terraform import cannot handle a name starting with a number, add _ if 
+      ## the repo name starts with a number.
+      if [[ $TERRAFORM_PRIVATE_REPO_NAME =~ ^[0-9] ]]; then
+        TERRAFORM_PRIVATE_REPO_NAME="_$TERRAFORM_PRIVATE_REPO_NAME"
+      fi
 
       cat >> "github-private-repos.tf" << EOF
 resource "github_repository" "${TERRAFORM_PRIVATE_REPO_NAME}" {
@@ -360,7 +372,9 @@ get_team_repos () {
 
     PERMS_PAYLOAD=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" -H "Accept: application/vnd.github.v3.repository+json" "${API_URL_PREFIX}/teams/${TEAM_ID}/repos/${ORG}/${i}")
     ADMIN_PERMS=$(echo "$PERMS_PAYLOAD" | jq -r .permissions.admin )
+    MAINTAIN_PERMS=$(echo "$PERMS_PAYLOAD" | jq -r .permissions.maintain )
     PUSH_PERMS=$(echo "$PERMS_PAYLOAD" | jq -r .permissions.push )
+    TRIAGE_PERMS=$(echo "$PERMS_PAYLOAD" | jq -r .permissions.triage )
     PULL_PERMS=$(echo "$PERMS_PAYLOAD" | jq -r .permissions.pull )
   
     if [[ "${ADMIN_PERMS}" == "true" ]]; then
@@ -371,12 +385,28 @@ resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
   permission = "admin"
 }
 EOF
+    elif [[ "${MAINTAIN_PERMS}" == "true" ]]; then
+      cat >> "github-teams.tf" << EOF
+resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
+  team_id    = "${TEAM_ID}"
+  repository = "${i}"
+  permission = "maintain"
+}
+EOF
     elif [[ "${PUSH_PERMS}" == "true" ]]; then
       cat >> "github-teams.tf" << EOF
 resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
   team_id    = "${TEAM_ID}"
   repository = "${i}"
   permission = "push"
+}
+EOF
+    elif [[ "${TRIAGE_PERMS}" == "true" ]]; then
+      cat >> "github-teams.tf" << EOF
+resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
+  team_id    = "${TEAM_ID}"
+  repository = "${i}"
+  permission = "triage"
 }
 EOF
     elif [[ "${PULL_PERMS}" == "true" ]]; then
@@ -388,7 +418,6 @@ resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
 }
 EOF
     fi
-    echo "ADMIN PERMS = ${ADMIN_PERMS}, PUSH_PERMS = ${PUSH_PERMS}, PULL_PERMS = ${PULL_PERMS}"
     terraform import "github_team_repository.${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" "${TEAM_ID}:${i}"
     done
   done
