@@ -87,31 +87,31 @@ import_organization () {
 
       cat >> "github-organization.tf" << EOF
 resource "github_organization_settings" "$ORG" {
-  billing_email = "$ORG_BILLING_EMAIL"
-  company = "$ORG_COMPANY"
-  blog = "$ORG_BLOG"
-  email = "$ORG_EMAIL"
-  twitter_username = "$ORG_TWITTER_USERNAME"
-  location = "$ORG_LOCATION"
-  name = "$ORG_NAME"
-  description = "$ORG_DESCRIPTION"
-  has_organization_projects = "$ORG_HAS_ORGANIZATION_PROJECT"
-  has_repository_projects = "$ORG_HAS_REPOSITORY_PROJECT"
-  default_repository_permission = "$ORG_DEFAULT_REPOSITORY_PERMISSION"
-  members_can_create_repositories = "$ORG_MEMBERS_CAN_CREATE_REPOSITORY"
-  members_can_create_public_repositories = "$ORG_MEMBERS_CAN_CREATE_PUBLIC_REPOSITORY"
-  members_can_create_private_repositories = "$ORG_MEMBERS_CAN_CREATE_PRIVATE_REPOSITORY"
-  members_can_create_internal_repositories = "$ORG_MEMBERS_CAN_CREATE_INTERNAL_REPOSITORY"
-  members_can_create_pages = "$ORG_MEMBERS_CAN_CREATE_PAGES"
-  members_can_create_public_pages = "$ORG_MEMBERS_CAN_CREATE_PUBLIC_PAGES"
-  members_can_create_private_pages = "$ORG_MEMBERS_CAN_CREATE_PRIVATE_PAGES"
-  members_can_fork_private_repositories = "$ORG_MEMBERS_CAN_CREATE_FORK_PRIVATE_REPOSITORY"
-  web_commit_signoff_required = "$ORG_WEB_COMMIT_SIGNOFF_REQUIRED"
-  advanced_security_enabled_for_new_repositories = "$ORG_ADVANCED_SECURITY_ENABLED_FOR_NEW_REPOSITORY"
-  dependabot_alerts_enabled_for_new_repositories=  "$ORG_DEPENDABOT_ALERT_ENABLED_FOR_NEW_REPOSITORY"
-  dependabot_security_updates_enabled_for_new_repositories = "$ORG_DEPENDABOT_SECURITY_UPDATES_ENABLED_FOR_NEW_REPOSITORY"
-  dependency_graph_enabled_for_new_repositories = "$ORG_DEPENDENCY_GRAPH_ENABLED_FOR_NEW_REPOSITORY"
-  secret_scanning_enabled_for_new_repositories = "$ORG_SECRET_SCANNING_ENABLED_FOR_NEW_REPOSITORY"
+  billing_email                                                = "$ORG_BILLING_EMAIL"
+  company                                                      = "$ORG_COMPANY"
+  blog                                                         = "$ORG_BLOG"
+  email                                                        = "$ORG_EMAIL"
+  twitter_username                                             = "$ORG_TWITTER_USERNAME"
+  location                                                     = "$ORG_LOCATION"
+  name                                                         = "$ORG_NAME"
+  description                                                  = "$ORG_DESCRIPTION"
+  has_organization_projects                                    = "$ORG_HAS_ORGANIZATION_PROJECT"
+  has_repository_projects                                      = "$ORG_HAS_REPOSITORY_PROJECT"
+  default_repository_permission                                = "$ORG_DEFAULT_REPOSITORY_PERMISSION"
+  members_can_create_repositories                              = "$ORG_MEMBERS_CAN_CREATE_REPOSITORY"
+  members_can_create_public_repositories                       = "$ORG_MEMBERS_CAN_CREATE_PUBLIC_REPOSITORY"
+  members_can_create_private_repositories                      = "$ORG_MEMBERS_CAN_CREATE_PRIVATE_REPOSITORY"
+  members_can_create_internal_repositories                     = "$ORG_MEMBERS_CAN_CREATE_INTERNAL_REPOSITORY"
+  members_can_create_pages                                     = "$ORG_MEMBERS_CAN_CREATE_PAGES"
+  members_can_create_public_pages                              = "$ORG_MEMBERS_CAN_CREATE_PUBLIC_PAGES"
+  members_can_create_private_pages                             = "$ORG_MEMBERS_CAN_CREATE_PRIVATE_PAGES"
+  members_can_fork_private_repositories                        = "$ORG_MEMBERS_CAN_CREATE_FORK_PRIVATE_REPOSITORY"
+  web_commit_signoff_required                                  = "$ORG_WEB_COMMIT_SIGNOFF_REQUIRED"
+  advanced_security_enabled_for_new_repositories               = "$ORG_ADVANCED_SECURITY_ENABLED_FOR_NEW_REPOSITORY"
+  dependabot_alerts_enabled_for_new_repositories               = "$ORG_DEPENDABOT_ALERT_ENABLED_FOR_NEW_REPOSITORY"
+  dependabot_security_updates_enabled_for_new_repositories     = "$ORG_DEPENDABOT_SECURITY_UPDATES_ENABLED_FOR_NEW_REPOSITORY"
+  dependency_graph_enabled_for_new_repositories                = "$ORG_DEPENDENCY_GRAPH_ENABLED_FOR_NEW_REPOSITORY"
+  secret_scanning_enabled_for_new_repositories                 = "$ORG_SECRET_SCANNING_ENABLED_FOR_NEW_REPOSITORY"
   secret_scanning_push_protection_enabled_for_new_repositories = "$ORG_SECRET_SCANNING_PUSH_PROTECTION_ENABLED_FOR_NEW_REPOSITORY"
 }
 
@@ -253,6 +253,12 @@ import_users () {
     for i in $(curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/members?per_page=100&page=${PAGE}" | jq -r 'sort_by(.login) | .[] | .login'); do
     MEMBERSHIP_ROLE=$(curl -s -H "Authorization: token ${GITHUB_TOKEN}" "${API_URL_PREFIX}/orgs/${ORG}/memberships/${i}" | jq -r .role)
     USERNAME_PARSE=$(echo "$i" | tr "-" "_" | tr '[:upper:]' '[:lower:]')
+
+    ## Terraform import cannot handle a name starting with a number, add _ if 
+    ## the username starts with a number.
+    if [[ $USERNAME_PARSE =~ ^[0-9] ]]; then
+      USERNAME_PARSE="_$USERNAME_PARSE"
+    fi
   
   cat >> "github-users.tf" << EOF
 resource "github_membership" "${USERNAME_PARSE}" {
@@ -382,6 +388,7 @@ resource "github_team_repository" "${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" {
 }
 EOF
     fi
+    echo "ADMIN PERMS = ${ADMIN_PERMS}, PUSH_PERMS = ${PUSH_PERMS}, PULL_PERMS = ${PULL_PERMS}"
     terraform import "github_team_repository.${TEAM_NAME}-${TERRAFORM_TEAM_REPO_NAME}" "${TEAM_ID}:${i}"
     done
   done
